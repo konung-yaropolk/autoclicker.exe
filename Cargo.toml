@@ -14,3 +14,6 @@ opt-level = 3
 # codegen-units = 1  # Helps LTO optimize more effectively
 # strip = true       # Automatically strip symbols from the binary.
 # panic = 'abort'    # or 'unwind' for safe memory cleanup
+
+[target.x86_64-pc-windows-gnu]
+rustflags = ["-C", "target-feature=+crt-static"]
