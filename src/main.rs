@@ -35,7 +35,7 @@ fn default_delay() -> f64 {
 }
 
 fn main() {
-    println!("🚀 Rust Legacy Autoclicker Suite");
+    println!("🚀 Rust Autoclicker Suite");
     println!("==================================================\n");
 
     loop {
