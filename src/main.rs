@@ -39,7 +39,7 @@ fn main() {
     println!("==================================================\n");
 
     loop {
-        println!("1. Run automation");
+        println!("1. Run workflow");
         println!("2. Record new workflow");
         println!("3. Show live mouse position");
         println!("4. Exit\n");
