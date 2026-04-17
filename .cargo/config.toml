@@ -3,6 +3,8 @@ rustflags = ["-C", "target-feature=+crt-static"]
 
 [target.x86_64-pc-windows-gnu]
 rustflags = ["-C", "target-feature=+crt-static"]
+linker = "C:\\msys64\\mingw64\\bin\\clang.exe"
+ar = "C:\\msys64\\mingw64\\bin\\llvm-ar.exe"
 
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-feature=+crt-static"]
