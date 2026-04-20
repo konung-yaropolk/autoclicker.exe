@@ -1,3 +1,7 @@
+#[toolchain]
+#channel = "1.75"
+#targets = ["x86_64-pc-windows-gnu"]
+
 [build]
 rustflags = ["-C", "target-feature=+crt-static"]
 
@@ -8,3 +12,4 @@ ar = "C:\\msys64\\mingw64\\bin\\llvm-ar.exe"
 
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-feature=+crt-static"]
+
