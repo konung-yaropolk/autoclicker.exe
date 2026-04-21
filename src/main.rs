@@ -35,7 +35,7 @@ fn default_delay() -> f64 {
 }
 
 fn main() {
-    println!("Autoclicker Tool");
+    println!("Scripted Autoclicker Tool");
     println!("==================================================\n");
 
     loop {
@@ -174,11 +174,31 @@ fn record_workflow() {
 
     let json = serde_json::to_string_pretty(&workflow).unwrap();
 
+
     println!("\nRECORDING FINISHED!");
     println!("Save this to a JSON file for later use:");
     println!("{}", "=".repeat(80));
     println!("\n{}", json);
     println!("\n{}", "=".repeat(80));
+
+    print!("\nDo you want to save into the workflow.json? y/N:");
+    io::stdout().flush().unwrap();
+    let mut save_answer = String::new();
+    io::stdin().read_line(&mut save_answer).unwrap();
+    let save_answer = save_answer.trim().to_lowercase();
+
+    if save_answer.is_empty() || save_answer == "n" || save_answer == "N"{
+        println!("Workflow not saved.");
+    } else {
+        let mut save_path = env::current_exe().unwrap();
+        save_path.pop();
+        save_path.push("workflow.json");
+
+        match fs::write(&save_path, &json) {
+            Ok(_) => println!("Workflow saved to: {}", save_path.display()),
+            Err(e) => println!("Failed to save workflow: {}", e),
+        }
+    }
 
     pause_to_menu();
 }
