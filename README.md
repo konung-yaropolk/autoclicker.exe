@@ -1,4 +1,4 @@
-# autoclicker  
+# autoclicker.exe  
 Scripted Autoclicker Tool on Rust  
 For legacy software automation, game cheating, etc  
 
