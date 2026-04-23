@@ -132,8 +132,8 @@ fn execute_steps(enigo: &mut Enigo, steps: &[Step], rep_stack: &mut Vec<u32>) {
 fn record_workflow() {
     println!("\nLet's record your workflow!");
     println!("Commands:");
-    println!("   ENTER -> Record Click (default delay 0.1s)");
-    println!("   t     -> Record Type   (use {{$}} to type current loop iteration number)");
+    println!("   ENTER -> Record Click");
+    println!("   t     -> Record Type   (use {{$}} to yield current (innermost) loop iteration number)");
     println!("   [     -> Start new nested loop");
     println!("   ]     -> End current (innermost) loop");
     println!("   q     -> Finish recording\n");
@@ -234,7 +234,7 @@ fn record_click_action(stack: &mut Vec<Vec<Step>>) {
     let enigo = Enigo::new();
     let (x, y) = enigo.mouse_location();
 
-    print!("   Click at ({}, {}) -> delay (default 0.1): ", x, y);
+    print!("   Click at ({}, {}) -> subsequent delay (default 0.1s): ", x, y);
     io::stdout().flush().unwrap();
     let mut d = String::new();
     io::stdin().read_line(&mut d).unwrap();
@@ -254,7 +254,7 @@ fn record_type_action(stack: &mut Vec<Vec<Step>>) {
     io::stdin().read_line(&mut text).unwrap();
     let text = text.trim().to_string();
 
-    print!("   Delay (default 0.1): ");
+    print!("   Subsequent delay (default 0.1s): ");
     io::stdout().flush().unwrap();
     let mut d = String::new();
     io::stdin().read_line(&mut d).unwrap();
@@ -327,13 +327,19 @@ fn load_file(path: &PathBuf) -> (Vec<Step>, u32) {
 
 fn show_mouse_position() {
     let enigo = Enigo::new();
-    println!("\nLive position (Ctrl+C to stop)\n");
+    println!("\nLive position (go to 0,0 position to stop)\n");
     loop {
         let (x, y) = enigo.mouse_location();
         print!("\rX: {:4} | Y: {:4}", x, y);
         io::stdout().flush().unwrap();
         thread::sleep(Duration::from_millis(200));
+        if x=0 || y=0 {
+            break
+        } else {
+            continue
+        };
     }
+    pause_to_menu();
 }
 
 fn pause_to_menu() {
