@@ -333,7 +333,7 @@ fn show_mouse_position() {
         print!("\rX: {:4} | Y: {:4}", x, y);
         io::stdout().flush().unwrap();
         thread::sleep(Duration::from_millis(200));
-        if x==0 && y==0 {
+        if x == 0 && y == 0 {
             break
         } else {
             continue
