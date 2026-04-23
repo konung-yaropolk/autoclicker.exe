@@ -9,5 +9,5 @@ You will need to set up the environment if you'd like to compile by your own:
 ```cmd
 rustup install 1.75                                  
 rustup override set 1.75
-rustup target add x86_64-pc-windows-msvc
+rustup target add i686-pc-windows-msvc
 ```
