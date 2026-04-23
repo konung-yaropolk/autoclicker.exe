@@ -82,16 +82,24 @@ fn run_automation() {
 
     let mut enigo = Enigo::new();
 
-    println!("\nPress ENTER to START the workflow...");
+    println!("\nTo emergency STOP the workflow, place mouse to UPPER-LEFT corner");
+    println!("Press ENTER to START the workflow...");
     let _ = std::io::stdin().read_line(&mut String::new());
 
     for i in 1..=top_repetitions {
-        println!("Top-level iteration {}/{}", i, top_repetitions);
-        let mut rep_stack = vec![i];
-        execute_steps(&mut enigo, &steps, &mut rep_stack);
+        // check if mouse is at (0, 0) to allow user to stop the workflow
+        let (x, y) = enigo.mouse_location();
+        if !(x == 0 && y == 0) {
+            println!("Top-level iteration {}/{}", i, top_repetitions);
+            let mut rep_stack = vec![i];
+            execute_steps(&mut enigo, &steps, &mut rep_stack);
+        } else {
+            println!("\nWorkflow stopped by user at iteration {}/{}", i, top_repetitions);
+            break;
+        }
     }
 
-    println!("\nWorkflow completed successfully!");
+    println!("\nWorkflow completed!");
     pause_to_menu();
 }
 
@@ -327,7 +335,7 @@ fn load_file(path: &PathBuf) -> (Vec<Step>, u32) {
 
 fn show_mouse_position() {
     let enigo = Enigo::new();
-    println!("\nLive position \ngo to [0, 0] position to stop\n");
+    println!("\nLive position \nMove mouse to UPPER-LEFT corner (0, 0) to stop\n");
     loop {
         let (x, y) = enigo.mouse_location();
         print!("\rX: {:4} | Y: {:4}", x, y);
