@@ -27,26 +27,3 @@ LegalCopyright = "konung_yaropolk © 2026"
 FileDescription = "Scripted Autoclicker Tool"
 ProductName = "Autoclicker"
 ProductVersion = "0.1.5"
-
-
-
-
-
-# place this into: .cargo/config.toml
-# to enable whole static linking
-
-#[toolchain]
-#channel = "1.75"
-#targets = ["x86_64-pc-windows-gnu"]
-
-#[build]
-#rustflags = ["-C", "target-feature=+crt-static"]
-
-#[target.x86_64-pc-windows-gnu]
-#rustflags = ["-C", "target-feature=+crt-static"]
-#linker = "C:\\msys64\\mingw64\\bin\\clang.exe"
-#ar = "C:\\msys64\\mingw64\\bin\\llvm-ar.exe"
-
-#[target.x86_64-pc-windows-msvc]
-#rustflags = ["-C", "target-feature=+crt-static"]
-
