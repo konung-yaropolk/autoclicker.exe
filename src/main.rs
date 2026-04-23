@@ -87,14 +87,9 @@ fn run_automation() {
     let _ = std::io::stdin().read_line(&mut String::new());
 
     for i in 1..=top_repetitions {
-        // check if mouse is at (0, 0) to allow user to stop the workflow
-        let (x, y) = enigo.mouse_location();
-        if !(x == 0 && y == 0) {
-            println!("Top-level iteration {}/{}", i, top_repetitions);
-            let mut rep_stack = vec![i];
-            execute_steps(&mut enigo, &steps, &mut rep_stack);
-        } else {
-            println!("\nWorkflow stopped by user at iteration {}/{}", i, top_repetitions);
+        println!("    Top-level iteration {}/{}", i, top_repetitions);
+        let mut rep_stack = vec![i];
+        if execute_steps(&mut enigo, &steps, &mut rep_stack) {
             break;
         }
     }
@@ -103,37 +98,44 @@ fn run_automation() {
     pause_to_menu();
 }
 
-fn execute_steps(enigo: &mut Enigo, steps: &[Step], rep_stack: &mut Vec<u32>) {
+fn execute_steps(enigo: &mut Enigo, steps: &[Step], rep_stack: &mut Vec<u32>) -> bool {
     for step in steps {
+        if is_stopped(enigo) {
+            println!("\nEXECUTION STOPPED BY USER");
+            return true; // stopped
+        }
+
         match step {
             Step::Click { x, y, delay } => {
                 enigo.mouse_move_to(*x, *y);
                 enigo.mouse_click(MouseButton::Left);
-                println!("Clicked at ({}, {})", x, y);
+                println!("    Clicked at ({}, {})", x, y);
                 thread::sleep(Duration::from_secs_f64(*delay));
             }
             Step::Type { text, delay } => {
-                let mut final_text = text.clone();
-                if let Some(&last_rep) = rep_stack.last() {
-                    final_text = final_text.replace("{$}", &last_rep.to_string());
-                }
+                let final_text = if let Some(&last_rep) = rep_stack.last() {
+                    text.replace("{$}", &last_rep.to_string())
+                } else {
+                    text.clone()
+                };
                 enigo.key_sequence(&final_text);
-                println!("Typed: {}", final_text);
+                println!("    Typed: {}", final_text);
                 thread::sleep(Duration::from_secs_f64(*delay));
             }
-            Step::Loop {
-                repetitions,
-                actions,
-            } => {
+            Step::Loop { repetitions, actions } => {
                 for i in 1..=*repetitions {
-                    println!("   Loop iteration {}/{}", i, repetitions);
+                    println!("        Loop iteration {}/{}", i, repetitions);
                     rep_stack.push(i);
-                    execute_steps(enigo, actions, rep_stack);
+                    let stopped = execute_steps(enigo, actions, rep_stack);
                     rep_stack.pop();
+                    if stopped {
+                        return true; // propagate stop upward
+                    }
                 }
             }
         }
     }
+    false // completed normally
 }
 
 // ====================== RECORDER ======================
@@ -348,6 +350,11 @@ fn show_mouse_position() {
         };
     }
     pause_to_menu();
+}
+
+fn is_stopped(enigo: &mut Enigo) -> bool {
+    let (x, y) = enigo.mouse_location();
+    x == 0 && y == 0
 }
 
 fn pause_to_menu() {
