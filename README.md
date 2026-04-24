@@ -12,13 +12,13 @@ rustup install 1.75
 rustup override set 1.75
 ```
 
-For 32-bit architecture:
+For x86 32-bit architecture:
 ```cmd
 rustup target add i686-pc-windows-msvc
 cargo build --release --target i686-pc-windows-msvc
 ```
 
-For 64-bit architecture:
+For x86 64-bit architecture:
 ```cmd
 rustup target add x86_64-pc-windows-msvc
 cargo build --release --target x86_64-pc-windows-msvc
