@@ -1,6 +1,6 @@
 [package]
 name = "autoclicker"
-version = "0.1.7"
+version = "0.1.8"
 edition = "2021"
 
 [dependencies]
@@ -24,4 +24,4 @@ OriginalFilename = "autoclicker.exe"
 LegalCopyright = "konung_yaropolk © 2026"
 FileDescription = "Scripted Autoclicker Tool"
 ProductName = "Autoclicker"
-ProductVersion = "0.1.7"
+ProductVersion = "0.1.8"

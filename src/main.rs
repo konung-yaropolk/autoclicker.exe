@@ -17,6 +17,13 @@ enum Step {
         #[serde(default = "default_delay")]
         delay: f64,
     },
+    #[serde(rename = "right_click")]
+    RightClick {
+        x: i32,
+        y: i32,
+        #[serde(default = "default_delay")]
+        delay: f64,
+    },
     #[serde(rename = "type")]
     Type {
         text: String,
@@ -112,6 +119,12 @@ fn execute_steps(enigo: &mut Enigo, steps: &[Step], rep_stack: &mut Vec<u32>) ->
                 println!("    Clicked at ({}, {})", x, y);
                 thread::sleep(Duration::from_secs_f64(*delay));
             }
+            Step::RightClick { x, y, delay } => {
+                enigo.mouse_move_to(*x, *y);
+                enigo.mouse_click(MouseButton::Right);
+                println!("    Right-clicked at ({}, {})", x, y);
+                thread::sleep(Duration::from_secs_f64(*delay));
+            }
             Step::Type { text, delay } => {
                 let final_text = if let Some(&last_rep) = rep_stack.last() {
                     text.replace("{$}", &last_rep.to_string())
@@ -143,6 +156,7 @@ fn record_workflow() {
     println!("\nLet's record your workflow!");
     println!("Commands:");
     println!("   ENTER -> Record Click");
+    println!("   r     -> Record Right Click");
     println!("   t     -> Record Type   (use {{$}} to yield current (innermost) loop iteration number)");
     println!("   [     -> Start new nested loop");
     println!("   ]     -> End current (innermost) loop");
@@ -152,7 +166,7 @@ fn record_workflow() {
     let mut loop_stack: Vec<Vec<Step>> = vec![steps];
 
     loop {
-        print!("\nCommand (ENTER/t/[/]/q): ");
+        print!("\nCommand (ENTER/r/t/[/]/q): ");
         io::stdout().flush().unwrap();
 
         let mut cmd = String::new();
@@ -164,6 +178,7 @@ fn record_workflow() {
             "[" => start_new_loop(&mut loop_stack),
             "]" => end_current_loop(&mut loop_stack),
             "t" => record_type_action(&mut loop_stack),
+            "r" => record_right_click_action(&mut loop_stack),
             "" => record_click_action(&mut loop_stack),
             _ => println!("Unknown command"),
         }
@@ -255,6 +270,23 @@ fn record_click_action(stack: &mut Vec<Vec<Step>>) {
         .unwrap()
         .push(Step::Click { x, y, delay });
     println!("   Click recorded");
+}
+
+fn record_right_click_action(stack: &mut Vec<Vec<Step>>) {
+    let enigo = Enigo::new();
+    let (x, y) = enigo.mouse_location();
+
+    print!("   Right click at ({}, {}) -> subsequent delay (default 0.1s): ", x, y);
+    io::stdout().flush().unwrap();
+    let mut d = String::new();
+    io::stdin().read_line(&mut d).unwrap();
+    let delay: f64 = d.trim().parse().unwrap_or(0.1);
+
+    stack
+        .last_mut()
+        .unwrap()
+        .push(Step::RightClick { x, y, delay });
+    println!("   Right click recorded");
 }
 
 fn record_type_action(stack: &mut Vec<Vec<Step>>) {
