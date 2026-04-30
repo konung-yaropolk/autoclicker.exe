@@ -71,6 +71,30 @@ fn main() {
     }
 }
 
+// ====================== DURATION ESTIMATION ======================
+fn estimate_steps_secs(steps: &[Step]) -> f64 {
+    steps.iter().map(|step| match step {
+        Step::Click  { delay, .. } => *delay,
+        Step::RightClick { delay, .. } => *delay,
+        Step::Type   { delay, .. } => *delay,
+        Step::Loop   { repetitions, actions } => {
+            *repetitions as f64 * estimate_steps_secs(actions)
+        }
+    }).sum()
+}
+
+fn format_duration(secs: f64) -> String {
+    let total = secs.round() as u64;
+    let h = total / 3600;
+    let m = (total % 3600) / 60;
+    let s = total % 60;
+    match (h, m) {
+        (0, 0) => format!("{}s", s),
+        (0, _) => format!("{}m {}s", m, s),
+        _      => format!("{}h {}m {}s", h, m, s),
+    }
+}
+
 // ====================== EXECUTION ======================
 fn run_automation() {
     let (steps, top_repetitions) = load_workflow();
@@ -81,10 +105,18 @@ fn run_automation() {
         return;
     }
 
+    let per_rep_secs = estimate_steps_secs(&steps);
+    let total_secs   = per_rep_secs * top_repetitions as f64;
+
     println!(
         "Loaded workflow -- {} top-level actions x {} repetitions",
         steps.len(),
         top_repetitions
+    );
+    println!(
+        "Estimated time:   {} total; {} per repetition",
+        format_duration(total_secs),
+        format_duration(per_rep_secs)
     );
 
     let mut enigo = Enigo::new();
