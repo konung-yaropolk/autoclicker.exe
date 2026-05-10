@@ -30,6 +30,18 @@ enum Step {
         #[serde(default = "default_delay")]
         delay: f64,
     },
+    #[serde(rename = "press_key")]
+    PressKey {
+        key: String,
+        #[serde(default = "default_delay")]
+        delay: f64,
+    },
+    #[serde(rename = "hotkey")]
+    Hotkey {
+        keys: Vec<String>,
+        #[serde(default = "default_delay")]
+        delay: f64,
+    },
     #[serde(rename = "loop")]
     Loop {
         repetitions: u32,
@@ -38,12 +50,12 @@ enum Step {
 }
 
 fn default_delay() -> f64 {
-    0.1
+    0.2
 }
 
 fn main() {
     println!("Scripted Autoclicker Tool");
-    println!("==================================================\n");
+    println!("{}\n", "=".repeat(50));
 
     loop {
         println!("1. Run workflow");
@@ -62,7 +74,7 @@ fn main() {
             "1" => run_automation(),
             "2" => record_workflow(),
             "3" => show_mouse_position(),
-            "4" => {
+            "4" | "q" | "quit" | "exit" => {
                 println!("Goodbye!");
                 break;
             }
@@ -74,10 +86,12 @@ fn main() {
 // ====================== DURATION ESTIMATION ======================
 fn estimate_steps_secs(steps: &[Step]) -> f64 {
     steps.iter().map(|step| match step {
-        Step::Click  { delay, .. } => *delay,
+        Step::Click      { delay, .. } => *delay,
         Step::RightClick { delay, .. } => *delay,
-        Step::Type   { delay, .. } => *delay,
-        Step::Loop   { repetitions, actions } => {
+        Step::Type       { delay, .. } => *delay,
+        Step::PressKey   { delay, .. } => *delay,
+        Step::Hotkey     { delay, .. } => *delay,
+        Step::Loop       { repetitions, actions } => {
             *repetitions as f64 * estimate_steps_secs(actions)
         }
     }).sum()
@@ -95,13 +109,95 @@ fn format_duration(secs: f64) -> String {
     }
 }
 
+// ====================== KEY PARSING ======================
+// Shared by PressKey and Hotkey so both use the same name table.
+fn parse_key(name: &str) -> Option<enigo::Key> {
+    use enigo::Key;
+    match name.to_lowercase().as_str() {
+        // --- Navigation ---
+        "tab"                       => Some(Key::Tab),
+        "escape" | "esc"            => Some(Key::Escape),
+        "space"                     => Some(Key::Space),
+        "backspace"                 => Some(Key::Backspace),
+        "delete" | "del"            => Some(Key::Delete),
+        "insert" | "ins"            => Some(Key::Insert),
+        "up"                        => Some(Key::UpArrow),
+        "down"                      => Some(Key::DownArrow),
+        "left"                      => Some(Key::LeftArrow),
+        "right"                     => Some(Key::RightArrow),
+        "home"                      => Some(Key::Home),
+        "end"                       => Some(Key::End),
+        "pageup"   | "page_up"      => Some(Key::PageUp),
+        "pagedown" | "page_down"    => Some(Key::PageDown),
+        // --- Modifiers ---
+        "ctrl" | "control"          => Some(Key::Control),
+        "lctrl" | "lcontrol"        => Some(Key::LControl),
+        "rctrl" | "rcontrol"        => Some(Key::RControl),
+        "alt"                       => Some(Key::Alt),
+        "shift"                     => Some(Key::Shift),
+        "lshift"                    => Some(Key::LShift),
+        "rshift"                    => Some(Key::RShift),
+        "super" | "win" | "meta"    => Some(Key::Meta),
+        "capslock" | "caps"         => Some(Key::CapsLock),
+        "numlock"                   => Some(Key::Numlock),
+        // --- System / misc ---
+        "return" | "enter"          => Some(Key::Return),
+        "pause"                     => Some(Key::Pause),
+        "print" | "printscreen"     => Some(Key::Print),
+        "help"                      => Some(Key::Help),
+        "select"                    => Some(Key::Select),
+        "execute"                   => Some(Key::Execute),
+        "clear"                     => Some(Key::Clear),
+        "cancel"                    => Some(Key::Cancel),
+        // --- Media ---
+        "volup"   | "volumeup"      => Some(Key::VolumeUp),
+        "voldown" | "volumedown"    => Some(Key::VolumeDown),
+        "mute" | "volumemute"       => Some(Key::VolumeMute),
+        "medianext" | "nexttrack"   => Some(Key::MediaNextTrack),
+        "mediaprev" | "prevtrack"   => Some(Key::MediaPrevTrack),
+        "mediastop"                 => Some(Key::MediaStop),
+        "mediaplay" | "playpause"   => Some(Key::MediaPlayPause),
+        // --- Numpad ---
+        "num0" | "numpad0"          => Some(Key::Numpad0),
+        "num1" | "numpad1"          => Some(Key::Numpad1),
+        "num2" | "numpad2"          => Some(Key::Numpad2),
+        "num3" | "numpad3"          => Some(Key::Numpad3),
+        "num4" | "numpad4"          => Some(Key::Numpad4),
+        "num5" | "numpad5"          => Some(Key::Numpad5),
+        "num6" | "numpad6"          => Some(Key::Numpad6),
+        "num7" | "numpad7"          => Some(Key::Numpad7),
+        "num8" | "numpad8"          => Some(Key::Numpad8),
+        "num9" | "numpad9"          => Some(Key::Numpad9),
+        "numadd"  | "numplus"       => Some(Key::Add),
+        "numsub"  | "numminus"      => Some(Key::Subtract),
+        "nummul"  | "nummultiply"   => Some(Key::Multiply),
+        "numdiv"  | "numdivide"     => Some(Key::Divide),
+        "numdec"  | "numdecimal"    => Some(Key::Decimal),
+        // --- F-keys (extended to F20) ---
+        "f1"  => Some(Key::F1),  "f2"  => Some(Key::F2),
+        "f3"  => Some(Key::F3),  "f4"  => Some(Key::F4),
+        "f5"  => Some(Key::F5),  "f6"  => Some(Key::F6),
+        "f7"  => Some(Key::F7),  "f8"  => Some(Key::F8),
+        "f9"  => Some(Key::F9),  "f10" => Some(Key::F10),
+        "f11" => Some(Key::F11), "f12" => Some(Key::F12),
+        "f13" => Some(Key::F13), "f14" => Some(Key::F14),
+        "f15" => Some(Key::F15), "f16" => Some(Key::F16),
+        "f17" => Some(Key::F17), "f18" => Some(Key::F18),
+        "f19" => Some(Key::F19), "f20" => Some(Key::F20),
+        // --- Single character fallback (layout-dependent) ---
+        // A single printable char like "a", "1", "+" maps to Key::Layout.
+        s if s.chars().count() == 1 => Some(Key::Layout(s.chars().next().unwrap())),
+        _ => None,
+    }
+}
+
 // ====================== EXECUTION ======================
 fn run_automation() {
     let (steps, top_repetitions) = load_workflow();
 
     if steps.is_empty() {
         println!("No actions to run. Please record a workflow first (option 2).");
-        pause_to_menu();
+        back_to_menu();
         return;
     }
 
@@ -134,7 +230,7 @@ fn run_automation() {
     }
 
     println!("\nWorkflow completed!");
-    pause_to_menu();
+    back_to_menu();
 }
 
 fn execute_steps(enigo: &mut Enigo, steps: &[Step], rep_stack: &mut Vec<u32>) -> bool {
@@ -167,6 +263,36 @@ fn execute_steps(enigo: &mut Enigo, steps: &[Step], rep_stack: &mut Vec<u32>) ->
                 println!("    Typed: {}", final_text);
                 thread::sleep(Duration::from_secs_f64(*delay));
             }
+            Step::PressKey { key, delay } => {
+                match parse_key(key) {
+                    Some(key_code) => {
+                        enigo.key_click(key_code);
+                        println!("    Pressed key: {}", key);
+                    }
+                    None => println!("    Unknown key '{}', skipping", key),
+                }
+                thread::sleep(Duration::from_secs_f64(*delay));
+            }
+            Step::Hotkey { keys, delay } => {
+                // Resolve all names first; skip the whole combo if any is unknown.
+                let resolved: Vec<enigo::Key> = keys.iter()
+                    .filter_map(|k| {
+                        let r = parse_key(k);
+                        if r.is_none() {
+                            println!("    Unknown key '{}' in hotkey, skipping combo", k);
+                        }
+                        r
+                    })
+                    .collect();
+
+                if resolved.len() == keys.len() {
+                    // Hold all keys down in order, release in reverse.
+                    for &k in &resolved          { enigo.key_down(k); }
+                    for &k in resolved.iter().rev() { enigo.key_up(k); }
+                    println!("    Hotkey: {}", keys.join(" + "));
+                }
+                thread::sleep(Duration::from_secs_f64(*delay));
+            }
             Step::Loop { repetitions, actions } => {
                 for i in 1..=*repetitions {
                     println!("        Loop iteration {}/{}", i, repetitions);
@@ -189,7 +315,10 @@ fn record_workflow() {
     println!("Commands:");
     println!("   ENTER -> Record Click");
     println!("   r     -> Record Right Click");
-    println!("   t     -> Record Type   (use {{$}} to yield current (innermost) loop iteration number)");
+    println!("   t     -> Record Type      (use {{$}} to yield current (innermost) loop iteration number)");
+    println!("   k     -> Record Press Key (enter, tab, esc, space, backspace, delete, f1 to f12,");
+    println!("                              up, down, left, right, home, end, pageup, pagedown)");
+    println!("   h     -> Record Hotkey    (e.g. ctrl+c  or  ctrl+alt+delete)");
     println!("   [     -> Start new nested loop");
     println!("   ]     -> End current (innermost) loop");
     println!("   q     -> Finish recording\n");
@@ -198,7 +327,7 @@ fn record_workflow() {
     let mut loop_stack: Vec<Vec<Step>> = vec![steps];
 
     loop {
-        print!("\nCommand (ENTER/r/t/[/]/q): ");
+        print!("\nCommand (ENTER/r/t/k/h/[/]/q): ");
         io::stdout().flush().unwrap();
 
         let mut cmd = String::new();
@@ -211,6 +340,8 @@ fn record_workflow() {
             "]" => end_current_loop(&mut loop_stack),
             "t" => record_type_action(&mut loop_stack),
             "r" => record_right_click_action(&mut loop_stack),
+            "k" => record_press_key_action(&mut loop_stack),
+            "h" => record_hotkey_action(&mut loop_stack),
             "" => record_click_action(&mut loop_stack),
             _ => println!("Unknown command"),
         }
@@ -224,32 +355,31 @@ fn record_workflow() {
     io::stdin().read_line(&mut rep_str).unwrap();
     let top_reps: u32 = rep_str.trim().parse().unwrap_or(1);
 
-    let workflow = serde_json::json!({
-        "actions": final_steps,
-        "repetitions": top_reps
-    });
+    let workflow = serde_yaml::Mapping::from_iter([
+        (serde_yaml::Value::String("repetitions".into()), serde_yaml::to_value(top_reps).unwrap()),
+        (serde_yaml::Value::String("actions".into()),     serde_yaml::to_value(final_steps).unwrap()),
+    ]);
 
-    let json = serde_json::to_string_pretty(&workflow).unwrap();
-
+    let yaml = serde_yaml::to_string(&workflow).unwrap();
 
     println!("\nRECORDING FINISHED!");
-    println!("Save this to a JSON file for later use:");
-    println!("{}", "=".repeat(80));
-    println!("\n{}", json);
-    println!("\n{}", "=".repeat(80));
+    println!("Save this to a YAML file for later use:");
+    println!("{}", "=".repeat(50));
+    println!("\n{}", yaml);
+    println!("{}", "=".repeat(50));
 
-    print!("\nDo you want to save into the workflow.json? y/N:");
+    print!("\nDo you want to save into the workflow.yaml? y/N:");
     io::stdout().flush().unwrap();
     let mut save_answer = String::new();
     io::stdin().read_line(&mut save_answer).unwrap();
     let save_answer = save_answer.trim().to_lowercase();
 
-    if save_answer == "y" || save_answer == "Y"{
+    if save_answer == "y" || save_answer == "Y" {
         let mut save_path = env::current_exe().unwrap();
         save_path.pop();
-        save_path.push("workflow.json");
+        save_path.push("workflow.yaml");
 
-        match fs::write(&save_path, &json) {
+        match fs::write(&save_path, &yaml) {
             Ok(_) => println!("Workflow saved to: {}", save_path.display()),
             Err(e) => println!("Failed to save workflow: {}", e),
         }
@@ -257,7 +387,7 @@ fn record_workflow() {
         println!("Workflow not saved.");
     }
 
-    pause_to_menu();
+    back_to_menu();
 }
 
 fn start_new_loop(stack: &mut Vec<Vec<Step>>) {
@@ -291,16 +421,13 @@ fn record_click_action(stack: &mut Vec<Vec<Step>>) {
     let enigo = Enigo::new();
     let (x, y) = enigo.mouse_location();
 
-    print!("   Click at ({}, {}) -> subsequent delay (default 0.1s): ", x, y);
+    print!("   Click at ({}, {}) -> subsequent delay (default {}s): ", x, y, default_delay());
     io::stdout().flush().unwrap();
     let mut d = String::new();
     io::stdin().read_line(&mut d).unwrap();
-    let delay: f64 = d.trim().parse().unwrap_or(0.1);
+    let delay: f64 = d.trim().parse().unwrap_or(default_delay());
 
-    stack
-        .last_mut()
-        .unwrap()
-        .push(Step::Click { x, y, delay });
+    stack.last_mut().unwrap().push(Step::Click { x, y, delay });
     println!("   Click recorded");
 }
 
@@ -308,16 +435,13 @@ fn record_right_click_action(stack: &mut Vec<Vec<Step>>) {
     let enigo = Enigo::new();
     let (x, y) = enigo.mouse_location();
 
-    print!("   Right click at ({}, {}) -> subsequent delay (default 0.1s): ", x, y);
+    print!("   Right click at ({}, {}) -> subsequent delay (default {}s): ", x, y, default_delay());
     io::stdout().flush().unwrap();
     let mut d = String::new();
     io::stdin().read_line(&mut d).unwrap();
-    let delay: f64 = d.trim().parse().unwrap_or(0.1);
+    let delay: f64 = d.trim().parse().unwrap_or(default_delay());
 
-    stack
-        .last_mut()
-        .unwrap()
-        .push(Step::RightClick { x, y, delay });
+    stack.last_mut().unwrap().push(Step::RightClick { x, y, delay });
     println!("   Right click recorded");
 }
 
@@ -328,14 +452,107 @@ fn record_type_action(stack: &mut Vec<Vec<Step>>) {
     io::stdin().read_line(&mut text).unwrap();
     let text = text.trim().to_string();
 
-    print!("   Subsequent delay (default 0.1s): ");
+    print!("   Subsequent delay (default {}s): ", default_delay());
     io::stdout().flush().unwrap();
     let mut d = String::new();
     io::stdin().read_line(&mut d).unwrap();
-    let delay: f64 = d.trim().parse().unwrap_or(0.1);
+    let delay: f64 = d.trim().parse().unwrap_or(default_delay());
 
     stack.last_mut().unwrap().push(Step::Type { text, delay });
     println!("   Type recorded");
+}
+
+fn print_key_map() {
+    println!("   ┌──────────────────────────────────────────────────────────────┐");
+    println!("   │ KEY MAP                                                      │");
+    println!("   ├───────────────────────────────┬──────────────────────────────┤");
+    println!("   │ Navigation:                   │ Modifiers:                   │");
+    println!("   │   enter / return              │   ctrl  / lctrl / rctrl      │");
+    println!("   │   tab                         │   alt                        │");
+    println!("   │   esc                         │   shift / lshift / rshift    │");
+    println!("   │   space                       │   super / win / meta         │");
+    println!("   │   backspace                   │   caps  / capslock           │");
+    println!("   │   delete / del                │   numlock                    │");
+    println!("   │   insert / ins                │                              │");
+    println!("   │   up / down / left / right    ├──────────────────────────────┤");
+    println!("   │   home / end                  │ System:                      │");
+    println!("   │   pageup / pagedown           │   pause  print               │");
+    println!("   ├───────────────────────────────┤   sysreq  break  help        │");
+    println!("   │ F-keys:                       │   select                     │");
+    println!("   │   f1 .. f20                   │   execute  clear  cancel     │");
+    println!("   ├───────────────────────────────┤──────────────────────────────┤");
+    println!("   │ Numpad:                       │ Media:                       │");
+    println!("   │   num0 .. num9                │   volup  voldown  mute       │");
+    println!("   │   numadd  numsub              │   medianext / nexttrack      │");
+    println!("   │   nummul  numdiv  numdec      │   mediaprev / prevtrack      │");
+    println!("   │                               │   mediastop                  │");
+    println!("   │                               │   mediaplay / playpause      │");
+    println!("   ├───────────────────────────────┴──────────────────────────────┤");
+    println!("   │ Single char: any one character (a, 1, +, ...) is also valid  │");
+    println!("   └──────────────────────────────────────────────────────────────┘");
+}
+
+fn record_press_key_action(stack: &mut Vec<Vec<Step>>) {
+    print_key_map();
+    print!("   Key name: ");
+    io::stdout().flush().unwrap();
+    let mut key = String::new();
+    io::stdin().read_line(&mut key).unwrap();
+    let key = key.trim().to_string();
+
+    if key.is_empty() {
+        println!("   No key entered, skipping.");
+        return;
+    }
+
+    print!("   Subsequent delay (default {}s): ", default_delay());
+    io::stdout().flush().unwrap();
+    let mut d = String::new();
+    io::stdin().read_line(&mut d).unwrap();
+    let delay: f64 = d.trim().parse().unwrap_or(default_delay());
+
+    stack.last_mut().unwrap().push(Step::PressKey { key: key.clone(), delay });
+    println!("   Press key '{}' recorded", key);
+}
+
+fn record_hotkey_action(stack: &mut Vec<Vec<Step>>) {
+    print_key_map();
+    print!("   Hotkey combo (e.g. ctrl+c  or  ctrl+alt+delete): ");
+    io::stdout().flush().unwrap();
+    let mut input = String::new();
+    io::stdin().read_line(&mut input).unwrap();
+
+    // Split on '+', trim whitespace, lowercase each part.
+    let keys: Vec<String> = input.trim()
+        .split('+')
+        .map(|s| s.trim().to_lowercase())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    if keys.is_empty() {
+        println!("   No keys entered, hotkey not recorded.");
+        return;
+    }
+
+    // Validate every key name before recording.
+    let unknown: Vec<&str> = keys.iter()
+        .filter(|k| parse_key(k).is_none())
+        .map(|k| k.as_str())
+        .collect();
+
+    if !unknown.is_empty() {
+        println!("   Unknown key(s): {}. Hotkey not recorded.", unknown.join(", "));
+        return;
+    }
+
+    print!("   Subsequent delay (default {}s): ", default_delay());
+    io::stdout().flush().unwrap();
+    let mut d = String::new();
+    io::stdin().read_line(&mut d).unwrap();
+    let delay: f64 = d.trim().parse().unwrap_or(default_delay());
+
+    println!("   Hotkey '{}' recorded", keys.join(" + "));
+    stack.last_mut().unwrap().push(Step::Hotkey { keys, delay });
 }
 
 // ====================== LOADING ======================
@@ -345,12 +562,12 @@ fn load_workflow() -> (Vec<Step>, u32) {
     } else {
         let mut p = env::current_exe().unwrap();
         p.pop();
-        p.push("workflow.json");
+        p.push("workflow.yaml");
         p
     };
 
     if !path.exists() {
-        println!("workflow.json not found.");
+        println!("workflow.yaml not found.");
         println!("Please record a new workflow first using option 2.\n");
 
         print!("Enter full path to workflow file (or press Enter to cancel): ");
@@ -376,7 +593,7 @@ fn load_file(path: &PathBuf) -> (Vec<Step>, u32) {
         Err(_) => return (Vec::new(), 1),
     };
 
-    let data: serde_json::Value = match serde_json::from_str(&content) {
+    let data: serde_yaml::Value = match serde_yaml::from_str(&content) {
         Ok(d) => d,
         Err(_) => return (Vec::new(), 1),
     };
@@ -387,7 +604,7 @@ fn load_file(path: &PathBuf) -> (Vec<Step>, u32) {
         .unwrap_or(1) as u32;
 
     let steps: Vec<Step> = if let Some(actions) = data.get("actions") {
-        serde_json::from_value(actions.clone()).unwrap_or_default()
+        serde_yaml::from_value(actions.clone()).unwrap_or_default()
     } else {
         Vec::new()
     };
@@ -413,7 +630,7 @@ fn show_mouse_position() {
             continue
         };
     }
-    pause_to_menu();
+    back_to_menu();
 }
 
 fn is_stopped(enigo: &mut Enigo) -> bool {
@@ -421,7 +638,6 @@ fn is_stopped(enigo: &mut Enigo) -> bool {
     x == 0 && y == 0
 }
 
-fn pause_to_menu() {
-    println!("\nPress ENTER to return to menu...");
-    let _ = std::io::stdin().read_line(&mut String::new());
+fn back_to_menu() {
+    println!("\n\nBack to menu...\n{}\n", "=".repeat(50));
 }
