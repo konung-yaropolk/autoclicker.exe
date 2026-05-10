@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "autoclicker"
-version = "0.1.10"
+version = "1.2.0"
 dependencies = [
  "enigo",
  "serde",
