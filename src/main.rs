@@ -8,7 +8,7 @@ use std::thread;
 use std::time::Duration;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(tag = "type")]
+#[serde(tag = "step")]
 enum Step {
     #[serde(rename = "click")]
     Click {
@@ -24,8 +24,8 @@ enum Step {
         #[serde(default = "default_delay")]
         delay: f64,
     },
-    #[serde(rename = "type")]
-    Type {
+    #[serde(rename = "text_input")]
+    TextInput {
         text: String,
         #[serde(default = "default_delay")]
         delay: f64,
@@ -88,7 +88,7 @@ fn estimate_steps_secs(steps: &[Step]) -> f64 {
     steps.iter().map(|step| match step {
         Step::Click      { delay, .. } => *delay,
         Step::RightClick { delay, .. } => *delay,
-        Step::Type       { delay, .. } => *delay,
+        Step::TextInput  { delay, .. } => *delay,
         Step::PressKey   { delay, .. } => *delay,
         Step::Hotkey     { delay, .. } => *delay,
         Step::Loop       { repetitions, actions } => {
@@ -253,7 +253,7 @@ fn execute_steps(enigo: &mut Enigo, steps: &[Step], rep_stack: &mut Vec<u32>) ->
                 println!("    Right-clicked at ({}, {})", x, y);
                 thread::sleep(Duration::from_secs_f64(*delay));
             }
-            Step::Type { text, delay } => {
+            Step::TextInput { text, delay } => {
                 let final_text = if let Some(&last_rep) = rep_stack.last() {
                     text.replace("{$}", &last_rep.to_string())
                 } else {
@@ -315,7 +315,7 @@ fn record_workflow() {
     println!("Commands:");
     println!("   ENTER -> Record Click");
     println!("   r     -> Record Right Click");
-    println!("   t     -> Record Type      (use {{$}} to yield current (innermost) loop iteration number)");
+    println!("   t     -> Record Text Input (use {{$}} to yield current (innermost) loop iteration number)");
     println!("   k     -> Record Press Key (enter, tab, esc, space, backspace, delete, f1 to f12,");
     println!("                              up, down, left, right, home, end, pageup, pagedown)");
     println!("   h     -> Record Hotkey    (e.g. ctrl+c  or  ctrl+alt+delete)");
@@ -338,7 +338,7 @@ fn record_workflow() {
             "q" => break,
             "[" => start_new_loop(&mut loop_stack),
             "]" => end_current_loop(&mut loop_stack),
-            "t" => record_type_action(&mut loop_stack),
+            "t" => record_text_input_action(&mut loop_stack),
             "r" => record_right_click_action(&mut loop_stack),
             "k" => record_press_key_action(&mut loop_stack),
             "h" => record_hotkey_action(&mut loop_stack),
@@ -445,7 +445,7 @@ fn record_right_click_action(stack: &mut Vec<Vec<Step>>) {
     println!("   Right click recorded");
 }
 
-fn record_type_action(stack: &mut Vec<Vec<Step>>) {
+fn record_text_input_action(stack: &mut Vec<Vec<Step>>) {
     print!("   Text (use {{$}} for current loop number): ");
     io::stdout().flush().unwrap();
     let mut text = String::new();
@@ -458,8 +458,8 @@ fn record_type_action(stack: &mut Vec<Vec<Step>>) {
     io::stdin().read_line(&mut d).unwrap();
     let delay: f64 = d.trim().parse().unwrap_or(default_delay());
 
-    stack.last_mut().unwrap().push(Step::Type { text, delay });
-    println!("   Type recorded");
+    stack.last_mut().unwrap().push(Step::TextInput { text, delay });
+    println!("   Text input recorded");
 }
 
 fn print_key_map() {

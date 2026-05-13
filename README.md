@@ -19,11 +19,11 @@ For legacy software automation, game cheating, repetitive task automation, and m
 
 ## Step Types
 
-Workflows are defined as a list of steps in `workflow.yaml`. Each step has a `type` and an optional `delay` (in seconds, default `0.2s`) that is waited after the action executes.
+Workflows are defined as a list of steps in `workflow.yaml`. Each step has a `step` and an optional `delay` (in seconds, default `0.2s`) that is waited after the action executes.
 
 ### `click` — Left mouse click
 ```yaml
-- type: click
+- step: click
   x: 540
   y: 300
   delay: 0.2
@@ -31,31 +31,31 @@ Workflows are defined as a list of steps in `workflow.yaml`. Each step has a `ty
 
 ### `right_click` — Right mouse click
 ```yaml
-- type: right_click
+- step: right_click
   x: 540
   y: 300
   delay: 0.2
 ```
 
-### `type` — Type a string of text
+### `text_input` — Type a string of text
 Use `{$}` as a placeholder that is replaced with the current loop iteration number.
 ```yaml
-- type: type
+- step: text_input
   text: "Hello world"
   delay: 0.1
 
-- type: type
+- step: text_input
   text: "Item {$}"   # yields "Item 1", "Item 2", etc. inside a loop
   delay: 0.1
 ```
 
 ### `press_key` — Press a single special key
 ```yaml
-- type: press_key
+- step: press_key
   key: enter
   delay: 0.2
 
-- type: press_key
+- step: press_key
   key: f5
   delay: 0.5
 ```
@@ -63,24 +63,24 @@ Use `{$}` as a placeholder that is replaced with the current loop iteration numb
 ### `hotkey` — Press a key combination
 Keys are held down left-to-right and released right-to-left, matching real OS behavior.
 ```yaml
-- type: hotkey
+- step: hotkey
   keys: [ctrl, c]
   delay: 0.2
 
-- type: hotkey
+- step: hotkey
   keys: [ctrl, alt, delete]
   delay: 0.5
 ```
 
 ### `loop` — Repeat a block of steps
 ```yaml
-- type: loop
+- step: loop
   repetitions: 10
   actions:
-    - type: click
+    - step: click
       x: 200
       y: 400
-    - type: press_key
+    - step: press_key
       key: enter
 ```
 
@@ -119,29 +119,29 @@ autoclicker.exe path\to\my_workflow.yaml
 repetitions: 5
 actions:
   # Click the username field and type
-  - type: click
+  - step: click
     x: 640
     y: 400
-  - type: type
+  - step: text_input
     text: "myuser"
-  - type: press_key
+  - step: press_key
     key: tab
-  - type: type
+  - step: text_input
     text: "mypassword"
-  - type: press_key
+  - step: press_key
     key: enter
     delay: 1.0   # wait for page load
 
   # Search loop
-  - type: loop
+  - step: loop
     repetitions: 3
     actions:
-      - type: click
+      - step: click
         x: 800
         y: 200
-      - type: type
+      - step: text_input
         text: "query {$}"
-      - type: hotkey
+      - step: hotkey
         keys: [ctrl, enter]
         delay: 0.5
 ```
@@ -156,7 +156,7 @@ Launch the tool and choose **option 2** to record a workflow interactively.
 |-----|--------|
 | `ENTER` | Record left click at current mouse position |
 | `r` | Record right click at current mouse position |
-| `t` | Record type text |
+| `t` | Record text input |
 | `k` | Record press key (key map is shown automatically) |
 | `h` | Record hotkey combination (key map is shown automatically) |
 | `[` | Start a new nested loop |
