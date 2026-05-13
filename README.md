@@ -197,5 +197,5 @@ The compiled binary will be at `target\<target>\release\autoclicker.exe`.
 | Crate | Purpose |
 |-------|---------|
 | `enigo 0.1.3` | Mouse and keyboard simulation |
-| `serde` | Serialization framework |
-| `serde_yaml` | YAML workflow file parsing and saving |
+| `serde 1.0` | Serialization framework |
+| `serde_yaml 0.8.26` | YAML workflow file parsing and saving |
