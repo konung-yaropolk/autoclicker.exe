@@ -2,7 +2,7 @@
 Scripted Autoclicker Tool written in Rust  
 For legacy software automation, game cheating, repetitive task automation, and more
 
-<img width="578" height="395" alt="image" src="https://github.com/user-attachments/assets/ec0be864-ac0e-482b-8c84-9b98641be523" />
+<img width="618" height="425" alt="image" src="https://github.com/user-attachments/assets/2e32a815-2d90-4e81-a7c1-a95b1803cd85" />
 
 ---
 
