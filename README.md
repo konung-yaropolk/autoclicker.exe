@@ -64,11 +64,16 @@ Use `{$}` as a placeholder that is replaced with the current loop iteration numb
 Keys are held down left-to-right and released right-to-left, matching real OS behavior.
 ```yaml
 - step: hotkey
-  keys: [ctrl, c]
+  keys:
+    - ctrl
+    - c
   delay: 0.2
 
 - step: hotkey
-  keys: [ctrl, alt, delete]
+  keys:
+    - ctrl
+    - alt
+    - delete
   delay: 0.5
 ```
 
@@ -142,7 +147,9 @@ actions:
       - step: text_input
         text: "query {$}"
       - step: hotkey
-        keys: [ctrl, enter]
+        keys:
+          - ctrl
+          - enter
         delay: 0.5
 ```
 
