@@ -211,7 +211,7 @@ fn run_automation(silent: bool) {
     let (steps, top_repetitions) = load_workflow();
 
     if steps.is_empty() {
-        println!("No actions to run. Workflow file is empty or contains syntax errors.");
+        println!("No actions to run. \nWorkflow file is empty or contains syntax errors.");
         return;        
     }
 
@@ -241,7 +241,8 @@ fn run_automation(silent: bool) {
         println!("    Top-level iteration {}/{}", i, top_repetitions);
         let mut rep_stack = vec![i];
         if execute_steps(&mut enigo, &steps, &mut rep_stack) {
-            break;
+            println!("Exit.");
+            return; // stopped by user, exit immediately
         }
     }
 
