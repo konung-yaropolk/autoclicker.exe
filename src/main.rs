@@ -236,11 +236,17 @@ fn run_automation(silent: bool) {
         println!("Press ENTER to START the workflow...");
         let _ = std::io::stdin().read_line(&mut String::new());
     }
-
+    if top_repetitions > 1 {
+        println!("Workflow x{}", top_repetitions);
+    }
     for i in 1..=top_repetitions {
-        println!("    Top-level iteration {}/{}", i, top_repetitions);
+                let root_indent = if top_repetitions > 1 {
+            let is_last = i == top_repetitions;
+            println!("{} [{}/{}]", if is_last { "\u{2514}\u{2500}" } else { "\u{251c}\u{2500}" }, i, top_repetitions);
+            if is_last { "   " } else { "\u{2502}  " }
+        } else { "" };        
         let mut rep_stack = vec![i];
-        if execute_steps(&mut enigo, &steps, &mut rep_stack) {
+        if execute_steps(&mut enigo, &steps, &mut rep_stack, root_indent) {
             println!("Exit.");
             return; // stopped by user, exit immediately
         }
@@ -249,24 +255,39 @@ fn run_automation(silent: bool) {
     println!("\nWorkflow completed!");
 }
 
-fn execute_steps(enigo: &mut Enigo, steps: &[Step], rep_stack: &mut Vec<u32>) -> bool {
-    for step in steps {
+
+
+fn tree_prefix(indent: &str, is_last: bool) -> String {
+    format!("{}{}", indent, if is_last { "\u{2514}\u{2500} " } else { "\u{251c}\u{2500} " })
+}
+
+fn tree_indent(indent: &str, is_last: bool) -> String {
+    format!("{}{}", indent, if is_last { "   " } else { "\u{2502}  " })
+}
+
+fn execute_steps(enigo: &mut Enigo, steps: &[Step], rep_stack: &mut Vec<u32>, indent: &str) -> bool {
+    let count = steps.len();
+    for (idx, step) in steps.iter().enumerate() {
         if is_stopped(enigo) {
-            println!("\nEXECUTION STOPPED BY USER");
+            println!("{}! EXECUTION STOPPED BY USER", indent);
             return true; // stopped
         }
+        
+        let is_last   = idx == count - 1;
+        let prefix     = tree_prefix(indent, is_last);
+        let child_indent = tree_indent(indent, is_last);
 
         match step {
             Step::Click { x, y, delay } => {
                 enigo.mouse_move_to(*x, *y);
                 enigo.mouse_click(MouseButton::Left);
-                println!("    Clicked at ({}, {})", x, y);
+                println!("{}click ({}, {})", prefix, x, y);
                 thread::sleep(Duration::from_secs_f64(*delay));
             }
             Step::RightClick { x, y, delay } => {
                 enigo.mouse_move_to(*x, *y);
                 enigo.mouse_click(MouseButton::Right);
-                println!("    Right-clicked at ({}, {})", x, y);
+                println!("{}right_click ({}, {})", prefix, x, y);
                 thread::sleep(Duration::from_secs_f64(*delay));
             }
             Step::TextInput { text, delay } => {
@@ -276,16 +297,16 @@ fn execute_steps(enigo: &mut Enigo, steps: &[Step], rep_stack: &mut Vec<u32>) ->
                     text.clone()
                 };
                 enigo.key_sequence(&final_text);
-                println!("    Typed: {}", final_text);
+                println!("{}text {:?}", prefix, final_text);
                 thread::sleep(Duration::from_secs_f64(*delay));
             }
             Step::PressKey { key, delay } => {
                 match parse_key(key) {
                     Some(key_code) => {
                         enigo.key_click(key_code);
-                        println!("    Pressed key: {}", key);
+                        println!("{}press_key [{}]", prefix, key);
                     }
-                    None => println!("    Unknown key '{}', skipping", key),
+                    None => println!("{}press_key [{}] -- unknown, skipped", prefix, key),
                 }
                 thread::sleep(Duration::from_secs_f64(*delay));
             }
@@ -295,7 +316,7 @@ fn execute_steps(enigo: &mut Enigo, steps: &[Step], rep_stack: &mut Vec<u32>) ->
                     .filter_map(|k| {
                         let r = parse_key(k);
                         if r.is_none() {
-                            println!("    Unknown key '{}' in hotkey, skipping combo", k);
+                            println!("{}hotkey: unknown key '{}', skipping combo", prefix, k);
                         }
                         r
                     })
@@ -303,20 +324,26 @@ fn execute_steps(enigo: &mut Enigo, steps: &[Step], rep_stack: &mut Vec<u32>) ->
 
                 if resolved.len() == keys.len() {
                     // Hold all keys down in order, release in reverse.
-                    for &k in &resolved          { enigo.key_down(k); }
+                    for &k in &resolved             { enigo.key_down(k); }
                     for &k in resolved.iter().rev() { enigo.key_up(k); }
-                    println!("    Hotkey: {}", keys.join(" + "));
+                    println!("{}hotkey [{}]", prefix, keys.join(" + "));
                 }
                 thread::sleep(Duration::from_secs_f64(*delay));
             }
             Step::Loop { repetitions, actions } => {
+                                println!("{}loop x{}", prefix, repetitions);
                 for i in 1..=*repetitions {
-                    println!("        Loop iteration {}/{}", i, repetitions);
+                    let iter_is_last = i == *repetitions;
+                    println!("{}{}[{}/{}]",
+                        child_indent,
+                        if iter_is_last { "\u{2514}\u{2500} " } else { "\u{251c}\u{2500} " },
+                        i, repetitions);
                     rep_stack.push(i);
-                    let stopped = execute_steps(enigo, actions, rep_stack);
+                    let loop_child_indent = tree_indent(&child_indent, iter_is_last);
+                    let stopped = execute_steps(enigo, actions, rep_stack, &loop_child_indent);
                     rep_stack.pop();
                     if stopped {
-                        return true; // propagate stop upward
+                        return true;
                     }
                 }
             }
