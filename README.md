@@ -1,9 +1,14 @@
 # autoclicker.exe
-Scripted Autoclicker Tool written in Rust  
+YAML-scripted Autoclicker Tool
 For legacy software automation, game cheating, repetitive task automation, and more
 
 <img width="623" height="428" alt="image" src="https://github.com/user-attachments/assets/fd625aaf-17ac-4223-b1c3-71906787f4b1" />
 
+---
+
+> ⚠️ **Workflow safety** — A `workflow.yaml` file is an executable script. A maliciously crafted workflow can automate harmful actions on your machine — deleting files, submitting forms, exfiltrating data through UI interactions, and so on. **Never run a workflow.yaml from an untrusted source.**
+
+> ⚠️ **Antivirus warning** — Because this tool simulates mouse clicks and keyboard input at the OS level, antivirus software and Windows Defender may flag the binary as a trojan or RAT (Remote Access Tool). This is a **false positive**. The source code is fully open and auditable. If you are unsure, build from source yourself rather than running a downloaded binary.
 
 ---
 
@@ -15,12 +20,13 @@ For legacy software automation, game cheating, repetitive task automation, and m
 - **Estimated execution time** — shown before every run, calculated from your delays
 - **Emergency stop** — move mouse to the upper-left corner `(0, 0)` at any time to abort
 - **Live mouse position tracker** — helps you find coordinates for clicks
+- **CLI mode** — run a workflow directly from the command line, with an optional flag for fully unattended scripted execution
 
 ---
 
 ## Step Types
 
-Workflows are defined as a list of steps in `workflow.yaml`. Each step has a `step` and an optional `delay` (in seconds, default `0.2s`) that is waited after the action executes.
+Workflows are defined as a list of steps in `workflow.yaml`. Each step has a `step` and an optional `delay` (in seconds, default `0.2s`) waited after the action executes.
 
 ### `click` — Left mouse click
 ```yaml
@@ -39,7 +45,7 @@ Workflows are defined as a list of steps in `workflow.yaml`. Each step has a `st
 ```
 
 ### `text_input` — Type a string of text
-Use `{$}` as a placeholder that is replaced with the current loop iteration number.
+Use `{$}` as a placeholder replaced with the current loop iteration number.
 ```yaml
 - step: text_input
   text: "Hello world"
@@ -153,6 +159,30 @@ actions:
           - enter
         delay: 0.5
 ```
+
+---
+
+## Command Line Usage
+
+When a workflow path is passed as an argument the tool skips the menu and runs the workflow immediately.
+
+```cmd
+autoclicker.exe path\to\workflow.yaml
+```
+
+Add `--run` (or `-r`) to run fully unattended — no prompts, no "press ENTER to start", exits automatically when done. Useful when autoclicker is part of a larger `.cmd` or PowerShell script:
+
+```cmd
+autoclicker.exe path\to\workflow.yaml --run
+```
+
+```powershell
+# PowerShell example
+& ".\autoclicker.exe" ".\login_workflow.yaml" --run
+if ($LASTEXITCODE -ne 0) { Write-Error "Workflow failed" }
+```
+
+The emergency stop (mouse to upper-left corner) still works in `--run` mode.
 
 ---
 

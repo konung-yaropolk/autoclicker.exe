@@ -54,6 +54,24 @@ fn default_delay() -> f64 {
 }
 
 fn main() {
+        let args: Vec<String> = env::args().collect();
+
+    // Check for --run / -r flag among all arguments (after the exe name).
+    let auto_run = args.iter().skip(1).any(|a| a == "--run" || a == "-r");
+
+    // If a workflow path was given (first non-flag arg), skip the menu and
+    // go straight to run_automation(). With --run / -r also skip all prompts.
+    let has_path_arg = args.iter().skip(1).any(|a| !a.starts_with('-'));
+
+    if has_path_arg {
+        if auto_run {
+            run_automation_silent();
+        } else {
+            run_automation();
+        }
+        return;
+    }
+
     println!("Scripted Autoclicker Tool");
     println!("{}\n", "=".repeat(50));
 
@@ -233,6 +251,43 @@ fn run_automation() {
     back_to_menu();
 }
 
+// Silent non-interactive run: loads workflow, runs it, exits. No prompts.
+fn run_automation_silent() {
+    let (steps, top_repetitions) = load_workflow();
+
+    if steps.is_empty() {
+        println!("No actions to run. Workflow file missing or empty.");
+        std::process::exit(1);
+    }
+
+    let per_rep_secs = estimate_steps_secs(&steps);
+    let total_secs   = per_rep_secs * top_repetitions as f64;
+
+    println!(
+        "Loaded workflow -- {} top-level actions x {} repetitions",
+        steps.len(),
+        top_repetitions
+    );
+    println!(
+        "Estimated time:   {} total; {} per repetition",
+        format_duration(total_secs),
+        format_duration(per_rep_secs)
+    );
+
+    let mut enigo = Enigo::new();
+
+    for i in 1..=top_repetitions {
+        println!("    Top-level iteration {}/{}", i, top_repetitions);
+        let mut rep_stack = vec![i];
+        if execute_steps(&mut enigo, &steps, &mut rep_stack) {
+            println!("\nStopped.");
+            std::process::exit(0);
+        }
+    }
+
+    println!("\nWorkflow completed!");
+}
+
 fn execute_steps(enigo: &mut Enigo, steps: &[Step], rep_stack: &mut Vec<u32>) -> bool {
     for step in steps {
         if is_stopped(enigo) {
@@ -316,9 +371,9 @@ fn record_workflow() {
     println!("   ENTER -> Record Click");
     println!("   r     -> Record Right Click");
     println!("   t     -> Record Text Input (use {{$}} to yield current (innermost) loop iteration number)");
-    println!("   k     -> Record Press Key (enter, tab, esc, space, backspace, delete, f1 to f12,");
+    println!("   k     -> Record Press Key  (enter, tab, esc, space, backspace, delete, f1 to f12,");
     println!("                              up, down, left, right, home, end, pageup, pagedown)");
-    println!("   h     -> Record Hotkey    (e.g. ctrl+c  or  ctrl+alt+delete)");
+    println!("   h     -> Record Hotkey     (e.g. ctrl+c  or  ctrl+alt+delete)");
     println!("   [     -> Start new nested loop");
     println!("   ]     -> End current (innermost) loop");
     println!("   q     -> Finish recording\n");
@@ -557,7 +612,8 @@ fn record_hotkey_action(stack: &mut Vec<Vec<Step>>) {
 
 // ====================== LOADING ======================
 fn load_workflow() -> (Vec<Step>, u32) {
-    let path = if let Some(arg) = env::args().nth(1) {
+    // First argument that doesn't start with '-' is the workflow path.
+    let path = if let Some(arg) = env::args().skip(1).find(|a| !a.starts_with('-')) {
         PathBuf::from(arg)
     } else {
         let mut p = env::current_exe().unwrap();
