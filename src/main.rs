@@ -64,11 +64,7 @@ fn main() {
     let has_path_arg = args.iter().skip(1).any(|a| !a.starts_with('-'));
 
     if has_path_arg {
-        if auto_run {
-            run_automation_silent();
-        } else {
-            run_automation();
-        }
+        run_automation(auto_run);
         return;
     }
 
@@ -89,7 +85,7 @@ fn main() {
         let choice = choice.trim();
 
         match choice {
-            "1" => run_automation(),
+            "1" => run_automation(false),
             "2" => record_workflow(),
             "3" => show_mouse_position(),
             "4" | "q" | "quit" | "exit" => {
@@ -98,6 +94,7 @@ fn main() {
             }
             _ => println!("Invalid option.\n"),
         }
+        println!("\n\nBack to menu...\n{}\n", "=".repeat(50));
     }
 }
 
@@ -210,13 +207,12 @@ fn parse_key(name: &str) -> Option<enigo::Key> {
 }
 
 // ====================== EXECUTION ======================
-fn run_automation() {
+fn run_automation(silent: bool) {
     let (steps, top_repetitions) = load_workflow();
 
     if steps.is_empty() {
-        println!("No actions to run. Please record a workflow first (option 2).");
-        back_to_menu();
-        return;
+        println!("No actions to run. Workflow file is empty or contains syntax errors.");
+        return;        
     }
 
     let per_rep_secs = estimate_steps_secs(&steps);
@@ -235,53 +231,17 @@ fn run_automation() {
 
     let mut enigo = Enigo::new();
 
-    println!("\nTo emergency STOP the workflow, place mouse to UPPER-LEFT corner");
-    println!("Press ENTER to START the workflow...");
-    let _ = std::io::stdin().read_line(&mut String::new());
+    if !silent {
+        println!("\nTo emergency STOP the workflow, place mouse to UPPER-LEFT corner");
+        println!("Press ENTER to START the workflow...");
+        let _ = std::io::stdin().read_line(&mut String::new());
+    }
 
     for i in 1..=top_repetitions {
         println!("    Top-level iteration {}/{}", i, top_repetitions);
         let mut rep_stack = vec![i];
         if execute_steps(&mut enigo, &steps, &mut rep_stack) {
             break;
-        }
-    }
-
-    println!("\nWorkflow completed!");
-    back_to_menu();
-}
-
-// Silent non-interactive run: loads workflow, runs it, exits. No prompts.
-fn run_automation_silent() {
-    let (steps, top_repetitions) = load_workflow();
-
-    if steps.is_empty() {
-        println!("No actions to run. Workflow file missing or empty.");
-        std::process::exit(1);
-    }
-
-    let per_rep_secs = estimate_steps_secs(&steps);
-    let total_secs   = per_rep_secs * top_repetitions as f64;
-
-    println!(
-        "Loaded workflow -- {} top-level actions x {} repetitions",
-        steps.len(),
-        top_repetitions
-    );
-    println!(
-        "Estimated time:   {} total; {} per repetition",
-        format_duration(total_secs),
-        format_duration(per_rep_secs)
-    );
-
-    let mut enigo = Enigo::new();
-
-    for i in 1..=top_repetitions {
-        println!("    Top-level iteration {}/{}", i, top_repetitions);
-        let mut rep_stack = vec![i];
-        if execute_steps(&mut enigo, &steps, &mut rep_stack) {
-            println!("\nStopped.");
-            std::process::exit(0);
         }
     }
 
@@ -442,7 +402,6 @@ fn record_workflow() {
         println!("Workflow not saved.");
     }
 
-    back_to_menu();
 }
 
 fn start_new_loop(stack: &mut Vec<Vec<Step>>) {
@@ -686,14 +645,9 @@ fn show_mouse_position() {
             continue
         };
     }
-    back_to_menu();
 }
 
 fn is_stopped(enigo: &mut Enigo) -> bool {
     let (x, y) = enigo.mouse_location();
     x == 0 && y == 0
-}
-
-fn back_to_menu() {
-    println!("\n\nBack to menu...\n{}\n", "=".repeat(50));
 }
